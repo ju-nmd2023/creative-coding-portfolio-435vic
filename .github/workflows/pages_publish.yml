@@ -42,7 +42,7 @@ jobs:
       - name: Install dependencies
         run: pnpm i
       - name: Build
-        run: pnpm build
+        run: pnpm build -- --base=/creative-coding-portfolio-435vic/
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
