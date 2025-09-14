@@ -12,9 +12,6 @@ importers:
         specifier: ^2.0.5
         version: 2.0.5
     devDependencies:
-      '@types/p5':
-        specifier: ^1.7.6
-        version: 1.7.6
       vite:
         specifier: ^7.1.2
         version: 7.1.5
@@ -294,9 +291,6 @@ packages:
 
   '@types/estree@1.0.8':
     resolution: {integrity: sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w==}
-
-  '@types/p5@1.7.6':
-    resolution: {integrity: sha512-6pLTOo0V3N5jZb5nTwjiv3lPHLK3Z/TjbhQUj8CTWXocUk1Z/f6OHTp3Pcwi1BhWnf5gqKUcyEb1gP0KIJuQgw==}
 
   acorn-walk@8.3.4:
     resolution: {integrity: sha512-ueEepnujpqee2o5aIYnvHU6C0A42MNdsIDeqy5BydrkuC5R1ZuUFnm27EeFJGoEHJQgn3uleRvmTXaJgfXbt4g==}
@@ -605,8 +599,6 @@ snapshots:
     optional: true
 
   '@types/estree@1.0.8': {}
-
-  '@types/p5@1.7.6': {}
 
   acorn-walk@8.3.4:
     dependencies:

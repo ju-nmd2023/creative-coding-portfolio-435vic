@@ -1,18 +1,32 @@
-// @ts-check
 import p5 from 'p5';
 import './style.css';
 
 // Import all experiments automatically
-const experiments = await import.meta.glob('./experiments/*.js', {eager: true});
+// it's done this weird way so that i can save the experiments directly
+// as an array
+const experiments = await (async () => {
+  const modules = await import.meta.glob('./experiments/*.js', {eager: true});
+  return Object.values(modules);
+})();
 const p5container = document.querySelector('#p5container'); 
 const nameText = document.querySelector("#name");
 const descriptionText = document.querySelector("#description");
+const prevButton = document.querySelector("button#prev");
+const nextButton = document.querySelector("button#next");
 
 let p5Instance = null;
 
-let currentExperiment = 0;
+let currentExperiment = 1;
 
 // window.experiments = experiments;
+
+prevButton.addEventListener('click', () => {
+  gotoExperiment((currentExperiment - 1) % experiments.length);
+});
+
+nextButton.addEventListener('click', () => {
+  gotoExperiment((currentExperiment + 1) % experiments.length);
+});
 
 function gotoExperiment(idx) {
   const experiment = Object.values(experiments)[idx];
@@ -25,7 +39,11 @@ function gotoExperiment(idx) {
 
   nameText.innerText = experiment.name;
   descriptionText.innerText = experiment.description;
+  currentExperiment = idx;
 }
 
-gotoExperiment(0);
+gotoExperiment(currentExperiment);
+
+
+
 
