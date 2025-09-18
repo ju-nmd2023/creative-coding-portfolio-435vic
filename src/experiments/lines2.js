@@ -3,10 +3,10 @@
  * @import {p5} from 'p5'
  */
 
-export const name = "lines";
-export const description = "wow. some lines. so cool";
-
-
+export const name = "lines 2";
+export const description = `An experiment inspired by Manfred Mohr's Quark lines. Several crossing lines are moved passed each other,
+showing the interference (Moiré patterns) between them. It's a little slow due to bad coding on my part.
+`;
 
 /** @type {(s: p5) => any} */
 export const sketch = ( s ) => {
@@ -14,6 +14,7 @@ export const sketch = ( s ) => {
   const yRandStart = -5;
   const yRandEnd = 5;
   const yRandChance = 0.5;
+  let t = 0;
 
   class RibbonPair {
     /**
@@ -38,6 +39,11 @@ export const sketch = ( s ) => {
 
     draw() {
       for (let n = 0; n < this.count; n++) {
+        s.stroke(
+          s.noise(n * 100 + t/2)*255,
+          s.noise(n * 300 + t/2 + 2000)*255,
+          s.noise(n * 400 + t/2 + 5000)*255,
+        );
         // for each point of the line, draw the one above and below the centerline
         for (let side of [-1, 1]) {
           // the farther the line is from the centerline, the more pronounced the randomness
@@ -61,21 +67,30 @@ export const sketch = ( s ) => {
   }
 
   let ribbons = [];
-  const ribbonCount = 5;
-  const ribbonSpacing = 40;
-  const ribbonStart = 80;
+  const ribbonCount = 20;
+  const ribbonSpacing = -56;
+  const ribbonStart = 0;
 
   s.setup = () => {
     s.createCanvas(innerWidth, innerHeight);
     s.background(200);
     for (let [i, y] = [0, ribbonStart]; i < ribbonCount; i++) {
-      ribbons.push(new RibbonPair(innerWidth, 20, y));
+      ribbons.push(new RibbonPair(innerWidth*3, 20, y));
       y += (yLineSpacing*40) + ribbonSpacing;
     }
+    s.frameRate(20);
   }
 
   s.draw = () => {
-    ribbons.forEach(r => r.draw());
-    s.noLoop();
+    s.background(200);
+    ribbons.forEach((r, n) => {
+      s.push();
+      s.translate(s.sin(t/40+s.noise(n*1000)*20)*200, 0);
+      r.draw()
+      s.pop();
+    });
+    // s.noLoop();
+    t++;
+    t = (t % 1000000);
   }
 };

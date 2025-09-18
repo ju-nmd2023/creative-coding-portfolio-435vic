@@ -16,7 +16,8 @@ const nextButton = document.querySelector("button#next");
 
 let p5Instance = null;
 
-let currentExperiment = 1;
+let storedExperiment = localStorage.getItem('experiment');
+let currentExperiment = storedExperiment !== null ? storedExperiment : 0;
 
 // window.experiments = experiments;
 
@@ -40,6 +41,7 @@ function gotoExperiment(idx) {
   nameText.innerText = experiment.name;
   descriptionText.innerText = experiment.description;
   currentExperiment = idx;
+  localStorage.setItem('experiment', idx);
 }
 
 gotoExperiment(currentExperiment);

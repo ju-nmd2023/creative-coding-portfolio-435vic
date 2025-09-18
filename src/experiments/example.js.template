@@ -1,0 +1,12 @@
+// @ts-check
+/**
+ * @import {p5} from 'p5'
+ */
+
+export const name = "example";
+export const description = "example desc";
+
+/** @type {(s: p5) => any} */
+export const sketch = ( s ) => {
+  // sketch
+};
