@@ -82,6 +82,8 @@ export const sketch = ( s ) => {
   }
 
   s.draw = () => {
+    s.noLoop();
+    return;
     s.background(200);
     ribbons.forEach((r, n) => {
       s.push();
