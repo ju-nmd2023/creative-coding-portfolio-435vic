@@ -8,6 +8,9 @@ export const description = "waaaavy";
 
 // sine wave original code from Daniel Shiffman:
 // https://editor.p5js.org/codingtrain/sketches/EIbEYLTaZ
+// code for randomizing the sine wave parameters was derived
+// from an LLM, conversation is here:
+// https://claude.ai/share/3c699f48-9370-4d8d-acb4-4d1016b66ab8
 
 /** @type {(s: p5) => any} */
 export const sketch = ( s ) => {
@@ -158,6 +161,10 @@ export const sketch = ( s ) => {
     s.background(0);
     s.translate(0, waveStart);
     wave.style();
+
+    // for as many waves as calculated in numWaves we render
+    // the sine wave at different points in the past, evenly spaced across the
+    // array
     for (let i = 0; i < numWaves; i++) {
       const idx = Math.floor(s.map(i, 0, numWaves, 0, HISTORY_SIZE*FPS - 1));
       s.beginShape();
@@ -166,6 +173,8 @@ export const sketch = ( s ) => {
       s.translate(0, -WAVE_SPACING);
     }
     
+    // we record the current state of the wave and put it in the history
+    // array, discarding the oldest element
     history.pop();
     history.unshift(wave.points.slice());
   }
