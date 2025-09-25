@@ -14,13 +14,13 @@ export const description = "waaaavy";
 
 /** @type {(s: p5) => any} */
 export const sketch = ( s ) => {
-  const WAVE_COARSE_COMPONENTS = 3;
+  const WAVE_COARSE_COMPONENTS = 6;
 
   class Waves {
     constructor(resolution) {
       this.res = resolution;
+      this.pointTotal = Math.floor(innerWidth / this.res * 2);
       this.components = [];
-      this.points = [];
       this.currentParams = [];
     }
 
@@ -47,10 +47,7 @@ export const sketch = ( s ) => {
       }
     }
 
-    update() {
-      this.points = [];
-      const total = Math.floor(innerWidth / this.res * 2);
-
+    update(points = new Array(this.pointTotal)) {
       const mouseMapX = s.map(s.mouseX, 0, innerWidth, 0, 1);
       const mouseMapY = s.map(s.mouseY, 0, innerHeight, 0, 1);
 
@@ -69,79 +66,71 @@ export const sketch = ( s ) => {
         }
       });
 
-      for (let i = 0; i < total + 1; i++) {
-        let angle = s.map(i, 0, total, 0, s.TWO_PI);
+      for (let i = 0; i < this.pointTotal + 1; i++) {
+        let angle = s.map(i, 0, this.pointTotal, 0, s.TWO_PI);
         let sum = 0;
         this.currentParams.forEach(wave => {
           sum += s.sin(wave.phase + angle * wave.freq) * wave.amp * 0.2;
         });
 
-        this.points.push([
-          s.map(i, 0, total+1, 0, innerWidth),
+        points[i] = [
+          s.map(i, 0, this.pointTotal+1, 0, innerWidth),
           s.map(sum, -1, 1, -innerHeight/4, innerHeight/4),
-        ]);
+        ];
       }
+
+      return points;
     }
+  }
 
-    style() {
-      s.noFill();
-      s.stroke(255);
-      s.strokeWeight(2);
-    }
+  class History {
+    constructor(size, wave) {
+      this.wave = wave; 
+      this.size = size;
+      this.history = [];
+      this.idx = 0;
 
-    /**
-      * @function drawWithParams
-      * @description draw wave with specified mouse coords, and components.
-      * @param {{mouseX: number, mouseY: number, components: {freq: number, amp: number, phase: number}[]}} params
-      */
-    drawAt({mouseX, mouseY, components}) {
-      const total = Math.floor(innerWidth / this.res * 2);
-      this.style();
-      s.beginShape();
-      for (let i = 0; i < total + 1; i++) {
-        let angle = s.map(i, 0, total, 0, s.TWO_PI);
-        let sum = 0;
-        components.forEach(wave => {
-          sum += s.sin(wave.phase + angle * wave.freq) * wave.amp * 0.2;
-        });
-
-        s.vertex(
-          s.map(i, 0, total+1, 0, innerWidth),
-          s.map(sum, -1, 1, -innerHeight/4, innerHeight/4),
-        );
+      for (let i = 0; i < size; i++) {
+        const pointArray = new Array(wave.pointTotal);
+        for (let j = 0; j < wave.pointTotal; j++) {
+          pointArray[j] = [0, 0]; 
+        }
+        this.history.push(pointArray);
       }
-      s.endShape();
+
+      this.history.forEach(arr => this.wave.update(arr));
     }
 
-    draw() {
-      this.style();
-      s.beginShape();
-      this.points.forEach(p => s.vertex(...p));
-      s.endShape();
-      return this.points;
+    advance() {
+      this.idx = (this.idx + 1) % this.size;
+    }
+
+    capture() {
+      this.advance();
+      this.wave.update(this.history[this.idx]);
+    }
+
+    recall(n) {
+      if (n >= this.size) throw Error("out of bounds");
+      const target = (((this.idx - n) % this.size) + this.size) % this.size;
+      return this.history[target];
     }
   }
 
   let wave;
-  let prevMouseX = 0;
-  let prevMouseY = 0;
-  let shouldRedraw = true;
+  let history;
 
   const FPS = 60;
   const HISTORY_SIZE = 1;
-
-  let history = [];
 
   s.setup = () => {
     s.createCanvas(innerWidth, innerHeight);
     s.background(0);
     s.frameRate(FPS);
-    wave = new Waves(2);
+    wave = new Waves(10);
     wave.init();
-    wave.update();
-    for (let i = 0; i < HISTORY_SIZE*FPS; i++) {
-      history.push(wave.points.slice());
-    }
+
+    history = new History(FPS * HISTORY_SIZE, wave);
   }
 
   s.mouseClicked = () => {
@@ -149,33 +138,41 @@ export const sketch = ( s ) => {
   }
   
   const WAVE_SPACING = 30;
-  const WAVE_WIDTH = 2;
-  const waveEnd = 10;
   const waveStart = innerHeight;
   const waveSize = WAVE_SPACING;
-  const numWaves = Math.floor((innerHeight)/waveSize);
+  const numWaves = Math.floor((innerHeight+100)/waveSize);
+
 
   s.draw = () => {
-    wave.update();
-    // return;
-    s.background(0);
-    s.translate(0, waveStart);
-    wave.style();
+    history.capture();
 
-    // for as many waves as calculated in numWaves we render
-    // the sine wave at different points in the past, evenly spaced across the
-    // array
+    s.background(0);
+    s.push();
+    s.translate(0, waveStart); // Center the drawing area
+
     for (let i = 0; i < numWaves; i++) {
-      const idx = Math.floor(s.map(i, 0, numWaves, 0, HISTORY_SIZE*FPS - 1));
+      const historyIndex = Math.floor(s.map(i, 0, numWaves, 0, history.size - 1));
+      
+      // For fading, we set the alpha of the stroke color
+      const alpha = s.map(i, 0, numWaves, 255, 50);
+
+      // Get the array of points for this historical wave
+      const points = history.recall(historyIndex);
+
+      // Draw the shape
+      s.noFill();
+      s.stroke(255, alpha); // White stroke with calculated alpha
+      s.strokeWeight(2);
+
       s.beginShape();
-      history[idx].forEach(p => s.vertex(...p));
+      for (const p of points) {
+        s.vertex(...p);
+      }
       s.endShape();
+
       s.translate(0, -WAVE_SPACING);
     }
     
-    // we record the current state of the wave and put it in the history
-    // array, discarding the oldest element
-    history.pop();
-    history.unshift(wave.points.slice());
+    s.pop();
   }
 };
