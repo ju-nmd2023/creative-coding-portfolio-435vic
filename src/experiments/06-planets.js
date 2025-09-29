@@ -19,7 +19,7 @@ import p5 from 'p5';
 export const sketch = ( s ) => {
   // gravitational constant
   const GRAVITY = 100;
-  const TRAIL_FADE_FACTOR = 5;
+  const TRAIL_FADE_FACTOR = 20;
   const CENTER = s.createVector(innerWidth/2, innerHeight/2);
   
   let trailBuffer; // Off-screen graphics buffer for trails
@@ -48,13 +48,19 @@ export const sketch = ( s ) => {
     draw() {
       if (!this.visible) return;
       // Draw current position to trail buffer
+      // trailBuffer.stroke(this.color);
+      // trailBuffer.strokeWeight(2);
+      // trailBuffer.line(this.lastPos.x, this.lastPos.y, this.pos.x, this.pos.y);
+      
       trailBuffer.stroke(this.color);
-      trailBuffer.strokeWeight(2);
-      trailBuffer.line(this.lastPos.x, this.lastPos.y, this.pos.x, this.pos.y);
+      trailBuffer.fill(255);
+      trailBuffer.strokeWeight(3);
+      trailBuffer.circle(this.pos.x, this.pos.y, this.mass*3);
       
       // Draw planet on main canvas
-      s.noStroke();
-      s.fill(this.color);
+      s.stroke(this.color);
+      s.fill(255);
+      s.strokeWeight(3);
       s.circle(this.pos.x, this.pos.y, this.mass*3);
       
       // Update last position
@@ -123,9 +129,9 @@ export const sketch = ( s ) => {
     
     // Create off-screen buffer for trails
     trailBuffer = s.createGraphics(innerWidth, innerHeight);
-    trailBuffer.background(0);
+    trailBuffer.background(255);
     
-    s.background(0);
+    s.background(255);
     s.noFill();
     s.angleMode(s.DEGREES);
 
@@ -148,11 +154,11 @@ export const sketch = ( s ) => {
     }
 
     // Fade the trail buffer instead of clearing
-    trailBuffer.background(0, 0, 0, TRAIL_FADE_FACTOR);
+    trailBuffer.background(255, TRAIL_FADE_FACTOR);
     // trailBuffer.noStroke();
     // trailBuffer.rect(0, 0, innerWidth, innerHeight);
     
-    s.background(0);
+    s.background(255);
     s.image(trailBuffer, 0, 0);
     
     // Update physics and draw planets

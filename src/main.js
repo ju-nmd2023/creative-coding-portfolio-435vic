@@ -6,7 +6,7 @@ import './style.css';
 // as an array
 const experiments = await (async () => {
   const modules = await import.meta.glob('./experiments/*.js', {eager: true});
-  return Object.values(modules);
+  return Object.values(modules).filter(m => m.disabled !== true);
 })();
 const p5container = document.querySelector('#p5container'); 
 const nameText = document.querySelector("#name");
@@ -21,16 +21,20 @@ let currentExperiment = storedExperiment !== null ? storedExperiment : 0;
 
 // window.experiments = experiments;
 
+function mod(a, b) {
+  return ((a % b) + b) % b;
+}
+
 prevButton.addEventListener('click', () => {
-  gotoExperiment((currentExperiment - 1) % experiments.length);
+  gotoExperiment(mod(currentExperiment - 1, experiments.length));
 });
 
 nextButton.addEventListener('click', () => {
-  gotoExperiment((currentExperiment + 1) % experiments.length);
+  gotoExperiment(mod(currentExperiment + 1, experiments.length));
 });
 
 function gotoExperiment(idx) {
-  const experiment = Object.values(experiments)[idx];
+  const experiment = experiments[idx];
   if (experiment === undefined) return;
   if (p5Instance) {
     p5Instance.remove();
@@ -45,7 +49,4 @@ function gotoExperiment(idx) {
 }
 
 gotoExperiment(currentExperiment);
-
-
-
 

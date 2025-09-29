@@ -4,6 +4,8 @@
 
 export const name = "kaleidoscope";
 export const description = "live coding session";
+// not officially part of portfolio, it was coded here for convenience
+export const disabled = true;
 
 /** @type {(s: p5) => void} */
 export const sketch = ( s ) => {
