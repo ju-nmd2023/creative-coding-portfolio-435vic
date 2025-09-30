@@ -53,14 +53,12 @@ export const sketch = ( s ) => {
   // get slingshotted, which is not ideal
   let mouseCooldown = 0;
 
-  // flag to init synthesizers
-  let soundStarted = false;
-
   class PlanetSynth {
     constructor(freq, mixer) {
+      this.baseFreq = freq;
       this.sine = new p5.Oscillator(freq, 'sine');
       this.square = new p5.Oscillator(freq, 'square');
-      this.square.amp(0.2);
+      this.square.amp(0.15);
 
       this.sine.disconnect();
       this.square.disconnect();
@@ -68,18 +66,61 @@ export const sketch = ( s ) => {
       this.output = new p5.Gain();
       this.output.disconnect();
       this.output.connect(mixer);
-      
+
       this.sine.connect(this.output);
       this.square.connect(this.output);
     }
 
-    update(amp) {
-      this.output.amp(amp, 0.1); 
+    update(velocity, distanceFromCenter) {
+      // Amplitude based on velocity magnitude
+      const velMag = velocity.mag();
+      const amp = s.map(velMag, 0, 400, 0.05, 0.3, true);
+      this.output.amp(amp, 0.1);
+
+      // Subtle frequency modulation based on distance from center
+      const freqMod = s.map(distanceFromCenter, 0, 500, 0.95, 1.05, true);
+      this.sine.freq(this.baseFreq * freqMod);
+      this.square.freq(this.baseFreq * freqMod);
     }
 
     play() {
       this.sine.start();
       this.square.start();
+    }
+  }
+
+  class CollisionSynth {
+    constructor(mixer) {
+      this.noise = new p5.Noise('white');
+      this.noise.disconnect();
+
+      this.filter = new p5.BandPass();
+      this.filter.disconnect();
+      this.filter.freq(800);
+      this.filter.res(10);
+
+      this.env = new p5.Envelope();
+      this.env.setADSR(0.001, 0.1, 0.0, 0.0);
+      this.env.disconnect();
+
+      this.output = new p5.Gain();
+      this.output.disconnect();
+      this.output.connect(mixer);
+      this.output.amp(0.4);
+
+      // Signal path: noise -> filter -> envelope -> output
+      this.noise.connect(this.filter);
+      this.filter.connect(this.env);
+      this.env.connect(this.output);
+
+      this.noise.start();
+    }
+
+    trigger(impactStrength) {
+      // Modulate filter frequency based on impact
+      const freq = s.map(impactStrength, 0, 50, 400, 2000, true);
+      this.filter.freq(freq);
+      this.env.play();
     }
   }
 
@@ -98,6 +139,7 @@ export const sketch = ( s ) => {
       // planets array but not taking them into account for the physics
       // this allows for 'turning on' planets on demand
       this.tangible = tangible;
+      this.synth = null; // Will be assigned after creation
     }
 
     draw() {
@@ -140,6 +182,12 @@ export const sketch = ( s ) => {
       this.lastPos.set(this.pos);
       this.pos.add(p5.Vector.mult(this.vel, dt));
       this.acc.mult(0);
+
+      // Update synth parameters
+      if (this.synth) {
+        const distFromCenter = this.pos.copy().sub(CENTER).mag();
+        this.synth.update(this.vel, distFromCenter);
+      }
     }
 
     collideEdges() {
@@ -162,10 +210,14 @@ export const sketch = ( s ) => {
         this.pos.y = innerHeight - this.radius; // Prevent from leaving the canvas from the bottom
         this.vel.y *= -EDGE_COLLISION_FACTOR;
         collision = true;
-      } 
+      }
 
       if (collision) {
         collisions.push(new Collision(this.pos, 20, 5));
+        if (collisionSynth) {
+          const impactStrength = this.vel.mag() * this.mass * 0.5;
+          collisionSynth.trigger(impactStrength);
+        }
       }
     }
 
@@ -187,7 +239,7 @@ export const sketch = ( s ) => {
         let impulse = (2 * dot) / (this.mass + other.mass) * PLANET_COLLISION_FACTOR;
 
         if (!this.immovable) {
-          this.vel.sub(p5.Vector.mult(impact, impulse * other.mass));  
+          this.vel.sub(p5.Vector.mult(impact, impulse * other.mass));
         }
 
         if (!other.immovable) {
@@ -195,6 +247,12 @@ export const sketch = ( s ) => {
         }
 
         collisions.push(new Collision(p5.Vector.add(this.pos, impact.copy().normalize().mult(this.radius)), 15, 3));
+
+        if (collisionSynth) {
+          const relVel = vdiff.mag();
+          const impactStrength = relVel * (this.mass + other.mass) * 0.3;
+          collisionSynth.trigger(impactStrength);
+        }
       }
     }
   }
@@ -269,6 +327,7 @@ export const sketch = ( s ) => {
   let planets = [];
   let collisions = [];
   let outMixer;
+  let collisionSynth;
 
   const mousePlanet = new Planet(2, null, CENTER, true, false, false);
 
@@ -279,16 +338,31 @@ export const sketch = ( s ) => {
       planets.push(new Planet(
         Math.floor(s.random(1, 9)),
         s.color(s.random(0, 255), 126, s.random(20, 150)),
-        s.createVector(s.cos(angle)*100, s.sin(angle)*100).add(CENTER), 
+        s.createVector(s.cos(angle)*100, s.sin(angle)*100).add(CENTER),
       ));
       planets[i].vel.add(rand.div(planets[i].mass));
     }
     planets.push(mousePlanet);
   }
 
+  function resetPlanets() {
+    // Reset existing planets without destroying them (preserves synths)
+    for (let i = 0; i < NUM_PLANETS && i < planets.length; i++) {
+      const rand = p5.Vector.random2D().normalize().mult(180);
+      const angle = s.map(i, 0, NUM_PLANETS, 0, 360);
+
+      planets[i].mass = Math.floor(s.random(1, 9));
+      planets[i].color = s.color(s.random(0, 255), 126, s.random(20, 150));
+      planets[i].pos = s.createVector(s.cos(angle)*100, s.sin(angle)*100).add(CENTER);
+      planets[i].lastPos = planets[i].pos.copy();
+      planets[i].vel = rand.copy().div(planets[i].mass);
+      planets[i].acc = s.createVector(0, 0);
+      planets[i].radius = planets[i].mass * 3 / 2;
+    }
+  }
+
   s.doubleClicked = () => {
-    planets = [];
-    initPlanets();
+    resetPlanets();
     // clear all trails
     trailBuffer.clear();
     trailBuffer.background(0);
@@ -315,8 +389,6 @@ export const sketch = ( s ) => {
     mousePlanet.tangible = false;
     maxVelocity = 800;
   }
-  
-  let testSynth;
 
   s.setup = () => {
     s.setAttributes("alpha", true);
@@ -333,22 +405,41 @@ export const sketch = ( s ) => {
     s.noFill();
     s.angleMode(s.DEGREES);
 
+    // Setup audio
     outMixer = new p5.Gain();
     outMixer.amp(0);
-    testSynth = new PlanetSynth(520, outMixer);
+
+    // Create collision synth
+    collisionSynth = new CollisionSynth(outMixer);
+
+    // Create planets first
+    initPlanets();
+
+    // Create synths for each planet (forming a chord)
+    // Using a minor 7th chord: root, minor 3rd, perfect 5th, minor 7th
+    const baseFreq = 130.81; // C3
+    const chordIntervals = [1, 1.189, 1.498, 1.782]; // C, Eb, G, Bb
+
+    for (let i = 0; i < NUM_PLANETS && i < planets.length; i++) {
+      const freq = baseFreq * chordIntervals[i % chordIntervals.length];
+      planets[i].synth = new PlanetSynth(freq, outMixer);
+    }
 
     // Expose audio control interface to the module scope
     audioControl = {
       start: () => {
-        testSynth.play();
-        outMixer.amp(1, 0.5);
+        // Start all planet synths
+        for (let i = 0; i < NUM_PLANETS && i < planets.length; i++) {
+          if (planets[i].synth) {
+            planets[i].synth.play();
+          }
+        }
+        outMixer.amp(0.6, 0.5);
       },
       setMuted: (muted) => {
-        outMixer.amp(muted ? 0 : 1, 0.2);
+        outMixer.amp(muted ? 0 : 0.6, 0.2);
       }
     };
-
-    initPlanets();
   };
 
   s.draw = () => {
