@@ -2,8 +2,6 @@
 export const name = "Planets";
 export const description = "Simulation of planets, showing the complex paths formed by their interactions with gravity";
 
-import p5 from 'p5';
-
 // DISCLAIMER
 // For the line trails, I originally called `line()` for every single line
 // segment on every planet on the main buffer. This slowed down the sketch

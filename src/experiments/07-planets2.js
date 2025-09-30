@@ -1,17 +1,33 @@
 export const name = "Planets 2";
 export const description = "Planets, but now with collisions and effects on hit.";
 
-import p5 from 'p5';
+// Audio control interface
+let audioControl = null;
+let audioStarted = false;
+let isMuted = true;
 
-// DISCLAIMER
-// For the line trails, I originally called `line()` for every single line
-// segment on every planet on the main buffer. This slowed down the sketch
-// significantly as well as reducing the max length of the planet's trails. For this
-// reason, I sought the help of an LLM in optimizing the code. It came up with the
-// idea to use a separate buffer for the trails, and instead of rendering them
-// all once per frame it simply draws a background with transparency, naturally
-// covering up the trail as time goes on. The original conversation can be found
-// below:
+export const withSound = true;
+
+export function toggleMuted() {
+  if (!audioControl) return;
+
+  if (!audioStarted) {
+    // First click - start audio (happens in user gesture context)
+    audioControl.start();
+    audioStarted = true;
+    isMuted = false;
+  } else {
+    // Subsequent clicks - toggle mute
+    isMuted = !isMuted;
+    audioControl.setMuted(isMuted);
+  }
+}
+
+// Credits:
+// The planet's line trails were optimized by consulting an LLM
+// originally they were line segmends drawn directly to the main buffer
+// now they're drawn on a separate buffer, and the trails are faded out by adding
+// a background with low opacity
 // https://claude.ai/share/c40ecdd7-2232-4965-a1e8-9b0291250cd2
 
 /** @type {(s: p5) => any} */
@@ -24,8 +40,7 @@ export const sketch = ( s ) => {
   // how much energy is lost when colliding with edges
   const EDGE_COLLISION_FACTOR = 0.6;
   // multiplier for planet collisions
-  const PLANET_COLLISION_FACTOR = 1.1;
-  // const PLANET_IMPULSE_MIN = 100;
+  const PLANET_COLLISION_FACTOR = 1.2;
   // timescale
   const TIMESCALE = 6;
   
@@ -37,6 +52,36 @@ export const sketch = ( s ) => {
   // we have to remove the mouse planet when resetting, otherwise the others
   // get slingshotted, which is not ideal
   let mouseCooldown = 0;
+
+  // flag to init synthesizers
+  let soundStarted = false;
+
+  class PlanetSynth {
+    constructor(freq, mixer) {
+      this.sine = new p5.Oscillator(freq, 'sine');
+      this.square = new p5.Oscillator(freq, 'square');
+      this.square.amp(0.2);
+
+      this.sine.disconnect();
+      this.square.disconnect();
+
+      this.output = new p5.Gain();
+      this.output.disconnect();
+      this.output.connect(mixer);
+      
+      this.sine.connect(this.output);
+      this.square.connect(this.output);
+    }
+
+    update(amp) {
+      this.output.amp(amp, 0.1); 
+    }
+
+    play() {
+      this.sine.start();
+      this.square.start();
+    }
+  }
 
   class Planet {
     constructor(mass, color, startPos, immovable = false, visible = true, tangible = true) {
@@ -202,7 +247,6 @@ export const sketch = ( s ) => {
     }
 
     update(dt) {
-      // Update all particles and remove dead ones
       for (let i = this.particles.length - 1; i >= 0; i--) {
         this.particles[i].update(dt);
         if (this.particles[i].isDead()) {
@@ -212,13 +256,11 @@ export const sketch = ( s ) => {
     }
 
     draw() {
-      // Draw all active particles
       for (const p of this.particles) {
         p.draw();
       }
     }
 
-    // Check if the effect is finished (all particles are gone)
     isFinished() {
       return this.particles.length === 0;
     }
@@ -226,16 +268,27 @@ export const sketch = ( s ) => {
 
   let planets = [];
   let collisions = [];
+  let outMixer;
 
-  const mousePlanet = new Planet(4, null, CENTER, true, false, false);
+  const mousePlanet = new Planet(2, null, CENTER, true, false, false);
+
+  function initPlanets() {
+    for (let i = 0; i < NUM_PLANETS; i++) {
+      const rand = p5.Vector.random2D().normalize().mult(180);
+      const angle = s.map(i, 0, NUM_PLANETS, 0, 360);
+      planets.push(new Planet(
+        Math.floor(s.random(1, 9)),
+        s.color(s.random(0, 255), 126, s.random(20, 150)),
+        s.createVector(s.cos(angle)*100, s.sin(angle)*100).add(CENTER), 
+      ));
+      planets[i].vel.add(rand.div(planets[i].mass));
+    }
+    planets.push(mousePlanet);
+  }
 
   s.doubleClicked = () => {
-    // reset positions of planets
-    for (let i = 0; i < planets.length; i++) {
-      planets[i].pos = s.createVector(s.cos(120*i)*80 + s.mouseX, s.sin(120*i)*80 + s.mouseY);
-      planets[i].vel = p5.Vector.random2D().normalize().mult(60).div(planets[i].mass);
-      planets[i].lastPos = planets[i].pos.copy();
-    }
+    planets = [];
+    initPlanets();
     // clear all trails
     trailBuffer.clear();
     trailBuffer.background(0);
@@ -262,15 +315,17 @@ export const sketch = ( s ) => {
     mousePlanet.tangible = false;
     maxVelocity = 800;
   }
+  
+  let testSynth;
 
   s.setup = () => {
     s.setAttributes("alpha", true);
     s.createCanvas(innerWidth, innerHeight);
-    
+
     // Create off-screen buffer for trails
     trailBuffer = s.createGraphics(innerWidth, innerHeight);
     trailBuffer.background(0);
-    
+
     collisionBuffer = s.createGraphics(innerWidth, innerHeight);
     collisionBuffer.background(200);
 
@@ -278,33 +333,22 @@ export const sketch = ( s ) => {
     s.noFill();
     s.angleMode(s.DEGREES);
 
-    for (let i = 0; i < NUM_PLANETS; i++) {
-      const rand = p5.Vector.random2D().normalize().mult(180);
-      const angle = s.map(i, 0, NUM_PLANETS+3, 0, 360);
-      planets.push(new Planet(
-        Math.floor(s.random(1, 9)),
-        s.color(s.random(0, 255), 126, s.random(20, 150)),
-        s.createVector(s.cos(angle)*100, s.sin(angle)*100).add(CENTER), 
-      ));
-      planets[i].vel.add(rand.div(planets[i].mass));
-    }
+    outMixer = new p5.Gain();
+    outMixer.amp(0);
+    testSynth = new PlanetSynth(520, outMixer);
 
+    // Expose audio control interface to the module scope
+    audioControl = {
+      start: () => {
+        testSynth.play();
+        outMixer.amp(1, 0.5);
+      },
+      setMuted: (muted) => {
+        outMixer.amp(muted ? 0 : 1, 0.2);
+      }
+    };
 
-    // planets.push(new Planet(
-    //   20,
-    //   s.color(200, 180, 20),
-    //   s.createVector(innerWidth/4, innerHeight/2)
-    // ));
-    //
-    // planets.push(new Planet(
-    //   14,
-    //   s.color(20, 120, 60),
-    //   s.createVector(innerWidth - innerWidth/4, innerHeight/2)
-    // ));
-    //
-    // planets[1].vel.add(s.createVector(0, -20));
-    //
-    // planets.push(mousePlanet);
+    initPlanets();
   };
 
   s.draw = () => {

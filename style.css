@@ -39,6 +39,10 @@ p {
   background-color: white;
 }
 
+.hidden {
+  display: none
+}
+
 header {
   align-self: center;
   padding: 1em;
@@ -70,6 +74,14 @@ main section {
   background-color: transparent;
   padding: 2em;
   cursor: pointer;
+}
+
+#sound.button::after {
+  content: "🔊";
+}
+
+#sound.button.muted::after {
+  content: "🔇";
 }
 
 a,
