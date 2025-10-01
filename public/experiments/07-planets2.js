@@ -1,5 +1,9 @@
 export const name = "Planets 2";
-export const description = "Planets, but now with collisions and effects on hit.";
+export const description = `
+A variation of planets, with a different visual style, collisions,
+and generative audio. The position of planets affects the pitches of several
+voices, and their collisions make a sound effect.
+`;
 
 // Audio control interface
 let audioControl = null;
@@ -43,6 +47,7 @@ export const sketch = ( s ) => {
   const PLANET_COLLISION_FACTOR = 1.2;
   // timescale
   const TIMESCALE = 6;
+  const BASE_VOLUME = 1.4;
   
   let trailBuffer; // Off-screen graphics buffer for trails
   let collisionBuffer; 
@@ -434,10 +439,10 @@ export const sketch = ( s ) => {
             planets[i].synth.play();
           }
         }
-        outMixer.amp(0.6, 0.5);
+        outMixer.amp(BASE_VOLUME, 0.5);
       },
       setMuted: (muted) => {
-        outMixer.amp(muted ? 0 : 0.6, 0.2);
+        outMixer.amp(muted ? 0 : BASE_VOLUME, 0.2);
       }
     };
   };

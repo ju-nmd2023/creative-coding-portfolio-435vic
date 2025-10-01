@@ -4,7 +4,10 @@
  */
 
 export const name = "Squares 2";
-export const description = "They wanna reach out!";
+export const description = `
+A variation of squares. They have been lonely, and they wish to reach out to you.
+Will you let them?
+`;
 
 /** @type {(s: p5) => any} */
 export const sketch = ( s ) => {

@@ -4,7 +4,10 @@
  */
 
 export const name = "waves";
-export const description = "waaaavy";
+export const description = `
+An original work. A random combination of sine waves is generated, and morphed by noise,
+affected by the mouse position. Several afterimages are rendered which serve as a visual 'echo'.
+`;
 
 // sine wave original code from Daniel Shiffman:
 // https://editor.p5js.org/codingtrain/sketches/EIbEYLTaZ

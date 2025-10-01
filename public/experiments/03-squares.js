@@ -4,7 +4,10 @@
  */
 
 export const name = "Squares";
-export const description = "Four sets of concentric squares. Move the mouse right to heat things up";
+export const description = `
+Inspired by Vera molnár's work. The horizontal position of the mouse alters the 'temperature',
+affecting the rendered lines.
+`;
 
 /** @type {(s: p5) => any} */
 export const sketch = ( s ) => {

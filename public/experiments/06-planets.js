@@ -1,6 +1,8 @@
 // @ts-check
 export const name = "Planets";
-export const description = "Simulation of planets, showing the complex paths formed by their interactions with gravity";
+export const description =`
+Simulation of planets, showing the complex paths formed by their interactions with gravity.
+`;
 
 // DISCLAIMER
 // For the line trails, I originally called `line()` for every single line
